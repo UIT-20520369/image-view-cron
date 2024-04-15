@@ -6,13 +6,26 @@ export default async function handler(
     res: NextApiResponse,
 ) {
     try {
-        const imgViewRecordsList = await redis.zrevrange("imagesView", 0, -1);
-        const projViewRecordsList = await redis.zrevrange("projectsView", 0, -1);
+        let imgViewRecordsList = await redis.zrevrange("imagesView", 0, -1);
+        let projViewRecordsList = await redis.zrevrange("projectsView", 0, -1);
         if (!!imgViewRecordsList) {
-            const formatedRecords = imgViewRecordsList.map(record => {
+            let sortedList = [];
+            const imageIdSet = new Set<number>();
+            let parsedList = imgViewRecordsList.map(record => {
                 return JSON.parse(record as string)
             })
-            formatedRecords.forEach(async record => {
+            parsedList.sort((a: any, b: any) => b.month_count - a.month_count);
+            // console.log({ parsedList });
+            for (const item of parsedList) {
+                if (!imageIdSet.has(item.image_id)) {
+                    sortedList.push(item);
+                    imageIdSet.add(item.image_id);
+                }
+            }
+            // console.log({sortedList});
+            const top5 = sortedList.splice(0, 5);
+
+            top5.forEach(async record => {
                 const now = new Date();
                 const input = {
                     image_id: record.image_id,
@@ -21,7 +34,10 @@ export default async function handler(
                     year: now.getFullYear()
                 }
                 try {
-                    const saveImageMostViewRes = await supabase.from("ImageViewRanks").insert({ ...input });
+                    const saveImageMostViewRes = await supabase.from("ImageViewRanks").insert({ ...input }).select();
+                    if (!!saveImageMostViewRes.data) {
+                        await redis.zremrangebyrank('imagesView', 0, -1)
+                    }
                     // console.log({ saveImageMostViewRes });
                 }
                 catch {
@@ -30,10 +46,21 @@ export default async function handler(
             })
         }
         if (!!projViewRecordsList) {
-            const formatedRecords = projViewRecordsList.map(record => {
+            let sortedList = [];
+            const projectIdSet = new Set<number>();
+            let parsedList = projViewRecordsList.map(record => {
                 return JSON.parse(record as string)
             })
-            formatedRecords.forEach(async record => {
+            parsedList.sort((a: any, b: any) => b.month_count - a.month_count);
+            for (const item of parsedList) {
+                if (!projectIdSet.has(item.image_id)) {
+                    sortedList.push(item);
+                    projectIdSet.add(item.image_id);
+                }
+            }
+            const top5 = sortedList.splice(0, 5);
+            // console.log({ parsedList });
+            top5.forEach(async record => {
                 const now = new Date();
                 const input = {
                     project_id: record.project_id,
@@ -42,8 +69,10 @@ export default async function handler(
                     year: now.getFullYear()
                 }
                 try {
-                    const saveProjectMostViewRes = await supabase.from("ProjectViewRanks").insert({ ...input });
-                    console.log({ saveProjectMostViewRes });
+                    const saveProjectMostViewRes = await supabase.from("ProjectViewRanks").insert({ ...input }).select();
+                    if (!!saveProjectMostViewRes.data) {
+                        await redis.zremrangebyrank('projectsView', 0, -1);
+                    }
                 }
                 catch {
 
