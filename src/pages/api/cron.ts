@@ -22,7 +22,7 @@ export default async function handler(
                 }
                 try {
                     const saveImageMostViewRes = await supabase.from("ImageViewRanks").insert({ ...input });
-                    console.log({ saveImageMostViewRes });
+                    // console.log({ saveImageMostViewRes });
                 }
                 catch {
 
