@@ -25,7 +25,7 @@ export default async function handler(
             // console.log({sortedList});
             const top5 = sortedList.splice(0, 5);
 
-            top5.forEach(async record => {
+            const updateTop5Promise = top5.map(async record => {
                 const now = new Date();
                 const input = {
                     image_id: record.image_id,
@@ -33,17 +33,19 @@ export default async function handler(
                     month: now.getMonth() + 1,
                     year: now.getFullYear()
                 }
+                console.log({ input });
                 try {
                     const saveImageMostViewRes = await supabase.from("ImageViewRanks").insert({ ...input }).select();
                     if (!!saveImageMostViewRes.data) {
                         await redis.zremrangebyrank('imagesView', 0, -1)
                     }
-                    // console.log({ saveImageMostViewRes });
+                    console.log({ saveImageMostViewRes });
                 }
                 catch {
 
                 }
             })
+            await Promise.all(updateTop5Promise);
         }
         if (!!projViewRecordsList) {
             let sortedList = [];
@@ -60,7 +62,7 @@ export default async function handler(
             }
             const top5 = sortedList.splice(0, 5);
             // console.log({ parsedList });
-            top5.forEach(async record => {
+           const updateTop5= top5.map(async record => {
                 const now = new Date();
                 const input = {
                     project_id: record.project_id,
@@ -78,6 +80,7 @@ export default async function handler(
 
                 }
             })
+            await Promise.all(updateTop5);
         }
         res.status(200).json({ imgViewRecordsList, projViewRecordsList });
     } catch (e: any) {
