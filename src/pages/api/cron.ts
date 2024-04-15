@@ -7,6 +7,7 @@ export default async function handler(
 ) {
     try {
         const imgViewRecordsList = await redis.zrevrange("imagesView", 0, -1);
+        const projViewRecordsList = await redis.zrevrange("projectsView", 0, -1);
         if (!!imgViewRecordsList) {
             const formatedRecords = imgViewRecordsList.map(record => {
                 return JSON.parse(record as string)
@@ -27,8 +28,29 @@ export default async function handler(
 
                 }
             })
-            res.status(200).json(formatedRecords);
         }
+        if (!!projViewRecordsList) {
+            const formatedRecords = projViewRecordsList.map(record => {
+                return JSON.parse(record as string)
+            })
+            formatedRecords.forEach(async record => {
+                const now = new Date();
+                const input = {
+                    project_id: record.project_id,
+                    month_count: record.month_count,
+                    month: now.getMonth() + 1,
+                    year: now.getFullYear()
+                }
+                try {
+                    const saveProjectMostViewRes = await supabase.from("ProjectViewRanks").insert({ ...input });
+                    console.log({ saveProjectMostViewRes });
+                }
+                catch {
+
+                }
+            })
+        }
+        res.status(200).json({ imgViewRecordsList, projViewRecordsList });
     } catch (e: any) {
 
     }
